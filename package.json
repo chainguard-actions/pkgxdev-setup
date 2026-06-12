@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "semver": "^7.6.3",
+    "tar": "^7.4.3"
+  },
+  "scripts": {
+    "dist": "npx esbuild ./action.js --bundle --platform=node --target=node20 --outfile=./action.js --allow-overwrite --minify"
+  }
+}
