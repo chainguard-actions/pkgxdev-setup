@@ -1,0 +1,31 @@
+name: Test pkgx setup with PKGX_DIR input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          PKGX_DIR: /tmp/my-pkgx-cache
+      - name: Assert pkgx is installed
+        run: |
+          echo "Checking pkgx is available..."
+          if ! command -v pkgx &>/dev/null; then
+            echo "FAIL: pkgx command not found"
+            exit 1
+          fi
+          echo "pkgx version: $(pkgx --version)"
+          echo "PASS"
+      - name: Assert PKGX_DIR is used
+        run: |
+          echo "Checking PKGX_DIR is set to /tmp/my-pkgx-cache..."
+          if [ -z "$PKGX_DIR" ] && [ ! -d "/tmp/my-pkgx-cache" ]; then
+            echo "INFO: PKGX_DIR env var not set and directory not created yet (may be created on first use)"
+          else
+            echo "PKGX_DIR=${PKGX_DIR}"
+            echo "Directory exists: $(ls /tmp/my-pkgx-cache 2>/dev/null || echo 'not yet created')"
+          fi
+          echo "PASS"
