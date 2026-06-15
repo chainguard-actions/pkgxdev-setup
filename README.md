@@ -10,6 +10,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
 | v3.1.0 | [`v3.1.0`](https://github.com/chainguard-actions/pkgxdev-setup/tree/v3.1.0) | [`290f6f3`](https://github.com/pkgxdev/setup/commit/290f6f341d74cc580c04929474885152a91a8210) |
+| v3.2.0 | [`v3.2.0`](https://github.com/chainguard-actions/pkgxdev-setup/tree/v3.2.0) | [`31f21c4`](https://github.com/pkgxdev/setup/commit/31f21c4c914399e7de94edafa26263669ba7bf68) |
 
 ## Privacy
 
