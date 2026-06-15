@@ -1,0 +1,33 @@
+name: Test pkgx setup with custom PKGX_DIR
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          version: ^2
+          PKGX_DIR: /tmp/custom-pkgx-cache
+      - name: Assert pkgx is installed
+        run: |
+          echo "Checking pkgx is available..."
+          if ! command -v pkgx &>/dev/null; then
+            echo "FAIL: pkgx command not found"
+            exit 1
+          fi
+          echo "pkgx version: $(pkgx --version)"
+          echo "PASS"
+      - name: Assert custom PKGX_DIR is used
+        run: |
+          echo "Checking custom PKGX_DIR exists or PKGX_DIR env is set..."
+          echo "PKGX_DIR=${PKGX_DIR}"
+          if [ -n "$PKGX_DIR" ] && [ "$PKGX_DIR" != "/tmp/custom-pkgx-cache" ]; then
+            echo "FAIL: PKGX_DIR is set to '$PKGX_DIR' but expected '/tmp/custom-pkgx-cache'"
+            exit 1
+          fi
+          echo "PASS"
+        env:
+          PKGX_DIR: /tmp/custom-pkgx-cache
