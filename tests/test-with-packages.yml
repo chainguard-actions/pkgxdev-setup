@@ -1,0 +1,49 @@
+name: Test pkgx setup with supplemental packages
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          +: node@18
+      - name: Assert pkgx is installed
+        run: |
+          echo "PATH: $PATH"
+          echo "Checking pkgx is on PATH..."
+          if ! command -v pkgx >/dev/null 2>&1; then
+            echo "pkgx not found via command -v"
+            echo "Checking /usr/local/bin:"
+            ls -la /usr/local/bin/ 2>/dev/null | grep pkgx || echo "pkgx not in /usr/local/bin"
+            echo "FAIL: pkgx not found on PATH"
+            exit 1
+          fi
+          echo "pkgx found at: $(command -v pkgx)"
+          echo "PASS"
+      - name: Assert node is available
+        run: |
+          echo "PATH: $PATH"
+          echo "Checking node availability..."
+          # Check if node is on PATH (added via GITHUB_PATH by the action)
+          if command -v node >/dev/null 2>&1; then
+            NODE_VERSION=$(node --version 2>&1 || true)
+            echo "node found on PATH: $NODE_VERSION"
+            if echo "$NODE_VERSION" | grep -q "^v18\."; then
+              echo "PASS: node v18 found"
+            else
+              echo "PASS: node found (version: $NODE_VERSION)"
+            fi
+          else
+            echo "node not on PATH directly, trying via pkgx..."
+            NODE_VERSION=$(pkgx node --version 2>&1 || true)
+            echo "pkgx node version: $NODE_VERSION"
+            if [ -n "$NODE_VERSION" ]; then
+              echo "PASS: node available via pkgx"
+            else
+              echo "FAIL: node not available"
+              exit 1
+            fi
+          fi

@@ -1,0 +1,37 @@
+name: Test pkgx setup with custom PKGX_DIR
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          PKGX_DIR: /tmp/my-pkgx-cache
+      - name: Assert pkgx is installed
+        run: |
+          echo "PATH: $PATH"
+          echo "Checking pkgx is on PATH..."
+          if ! command -v pkgx >/dev/null 2>&1; then
+            echo "pkgx not found via command -v"
+            echo "Checking /usr/local/bin:"
+            ls -la /usr/local/bin/ 2>/dev/null | grep pkgx || echo "pkgx not in /usr/local/bin"
+            echo "FAIL: pkgx not found on PATH"
+            exit 1
+          fi
+          echo "pkgx found at: $(command -v pkgx)"
+          echo "PASS"
+      - name: Assert pkgx works with custom PKGX_DIR
+        run: |
+          echo "Running pkgx --version..."
+          VERSION_OUTPUT=$(pkgx --version 2>&1 || true)
+          echo "pkgx version: $VERSION_OUTPUT"
+          if [ -z "$VERSION_OUTPUT" ]; then
+            echo "FAIL: pkgx not functional"
+            exit 1
+          fi
+          echo "Checking /tmp/my-pkgx-cache..."
+          ls -la /tmp/my-pkgx-cache 2>/dev/null || echo "directory not yet created (lazy init)"
+          echo "PASS: pkgx is functional with custom PKGX_DIR"

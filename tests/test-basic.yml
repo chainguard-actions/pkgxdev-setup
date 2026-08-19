@@ -10,10 +10,24 @@ jobs:
         uses: .
       - name: Assert pkgx is installed
         run: |
-          echo "Checking pkgx is available..."
-          if ! command -v pkgx &>/dev/null; then
-            echo "FAIL: pkgx command not found"
+          echo "PATH: $PATH"
+          echo "Checking pkgx is on PATH..."
+          if ! command -v pkgx >/dev/null 2>&1; then
+            echo "pkgx not found via command -v"
+            echo "Checking /usr/local/bin:"
+            ls -la /usr/local/bin/ 2>/dev/null | grep pkgx || echo "pkgx not in /usr/local/bin"
+            echo "FAIL: pkgx not found on PATH"
             exit 1
           fi
-          echo "pkgx version: $(pkgx --version)"
+          echo "pkgx found at: $(command -v pkgx)"
+          echo "PASS"
+      - name: Assert pkgx runs
+        run: |
+          echo "Running pkgx --version..."
+          VERSION_OUTPUT=$(pkgx --version 2>&1 || true)
+          echo "actual: $VERSION_OUTPUT"
+          if [ -z "$VERSION_OUTPUT" ]; then
+            echo "FAIL: pkgx --version produced no output"
+            exit 1
+          fi
           echo "PASS"

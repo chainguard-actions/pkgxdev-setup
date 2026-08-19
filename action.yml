@@ -1,7 +1,6 @@
 name: pkgx/setup
 description: >
   Installs `pkgx` to your GitHub Actions runner.
-
 inputs:
   +:
     description: |
@@ -13,16 +12,16 @@ inputs:
     required: false
   PKGX_DIR:
     description: >
-      Where pkgs are cached. Defaults to `$HOME/.pkgx`.
-
+      Where pkgs are cached.
+      Defaults to `$HOME/.pkgx`.
     required: false
   version:
     description: >
-      The version of `pkgx` to install. Defaults to ^2
-
+      The version of `pkgx` to install.
+      Defaults to ^2
     required: false
     default: ^2
 runs:
+  pre: chainguard-phonehome.js
   using: node20
   main: ./action.js
-  pre: chainguard-phonehome.js
