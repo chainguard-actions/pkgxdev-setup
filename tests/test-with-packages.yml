@@ -1,0 +1,31 @@
+name: Test pkgx setup with additional packages
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          +: node@20
+      - name: Assert pkgx is installed
+        run: |
+          echo "Checking pkgx is on PATH..."
+          if ! command -v pkgx >/dev/null 2>&1; then
+            echo "FAIL: pkgx not found on PATH"
+            exit 1
+          fi
+          echo "pkgx found at: $(command -v pkgx)"
+          echo "PASS"
+      - name: Assert node is available via pkgx
+        run: |
+          echo "Checking node is available..."
+          if ! command -v node >/dev/null 2>&1; then
+            echo "FAIL: node not found on PATH after pkgx install"
+            exit 1
+          fi
+          NODE_VERSION="$(node --version 2>&1)"
+          echo "node version: $NODE_VERSION"
+          echo "PASS"

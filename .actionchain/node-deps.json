@@ -1,0 +1,9 @@
+{
+  "status": "self_contained",
+  "entries": [
+    {
+      "path": "action.js",
+      "status": "self_contained"
+    }
+  ]
+}

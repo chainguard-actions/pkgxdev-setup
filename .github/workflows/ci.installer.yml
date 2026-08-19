@@ -1,0 +1,222 @@
+on:
+  workflow_call:
+  pull_request:
+    paths:
+      - installer.sh
+      - .github/workflows/ci.installer.yml
+
+concurrency:
+  group: ${{ github.ref || 'ci' }}/installer.sh
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  install-pkgx:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # using cat | sh to emulate the curl command we tell people to use
+      - run: cat ./installer.sh | sh
+      - run: pkgx --version
+
+  shellcheck:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: reviewdog/action-shellcheck@4c07458293ac342d477251099501a718ae5ef86e # v1
+
+  usage-as-proxy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: cat ./installer.sh | sh -s deno eval 'console.log(1)'
+      - run: ./installer.sh -- sh -c "which pkgx"
+      - run: sh <(cat ./installer.sh) duf
+      - run: if command -v pkgx; then exit 1; fi
+
+  sudo-not-required:
+    runs-on: ubuntu-latest
+    container: debian:buster-slim
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: curl
+          path: bin
+      - run: ./installer.sh
+        env:
+          PATH: ${{ github.workspace }}/bin:/usr/bin:/bin
+
+  eval-bash:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          vMAJOR=$(curl https://pkgx.sh/VERSION | cut -d. -f1)
+
+          if [ "$vMAJOR" -lt 2 ]; then
+            . ./installer.sh
+            env +duf
+          else
+            . ./installer.sh
+            source <(pkgx +duf)
+          fi
+
+          duf --version
+
+          test -n "$BASH_VERSION"
+          test -z "$ZSH_VERSION"
+        shell: bash -e {0}
+
+      # check pkgx was installed despite executing via `eval`
+      - run:
+          pkgx duf --version
+
+  eval-zsh:
+    runs-on: ubuntu-latest
+    steps:
+      - name: prep
+        run: sudo apt-get update && sudo apt-get install -y zsh
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          vMAJOR=$(curl https://pkgx.sh/VERSION | cut -d. -f1)
+
+          if [ "$vMAJOR" -lt 2 ]; then
+            . ./installer.sh
+            env +duf
+          else
+            . ./installer.sh
+            source <(pkgx +duf)
+          fi
+
+          duf --version
+
+          test -n "$ZSH_VERSION"
+          test -z "$BASH_VERSION"
+        shell: zsh -e {0}
+
+  eval-posix-sh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: |
+          vMAJOR=$(curl https://pkgx.sh/VERSION | cut -d. -f1)
+
+          if [ "$vMAJOR" -lt 2 ]; then
+            . ./installer.sh
+            env +duf
+          else
+            . ./installer.sh
+            _pkgx_env=$(mktemp)
+            pkgx +duf > "$_pkgx_env"
+            . "$_pkgx_env"
+            rm -f "$_pkgx_env"
+          fi
+
+          duf --version
+
+          test -z "$ZSH_VERSION"
+          test -z "$BASH_VERSION"
+        shell: /bin/sh -e {0}
+
+  sudo-required:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: sudo chmod go-w /usr/local/bin
+      # ^^ we run as `runner` but this dir has 999 perms
+      - name: check
+        run: if touch /usr/local/bin/foo; then exit 1; fi
+      - run: ./installer.sh
+      - run: test "$(which pkgx)" = /usr/local/bin/pkgx
+
+  no-dirs:
+    strategy:
+      matrix:
+        dir: [/usr/local, /usr/local/bin]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - env:
+          DIR: ${{ matrix.dir }}
+        run: sudo mv "$DIR" $(mktemp -d)
+      - run: ./installer.sh
+      - run: pkgx duf --version
+
+  multiple-apply-is-ok:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: cat ./installer.sh | sh
+      - run: cat ./installer.sh | sh
+
+  linuxen:
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        container:
+          - debian:buster-slim
+          - debian:bullseye-slim
+          - debian:bookworm-slim
+          - archlinux:latest
+          - ubuntu:focal
+          - ubuntu:jammy
+          - ubuntu:noble
+          - fedora:latest
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: curl
+          path: bin
+
+      - run: ./installer.sh
+        env:
+          PATH: ${{ github.workspace }}/bin:/usr/bin:/bin
+
+      - run: pkgx deno eval 'console.log(1)'
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: .\\installer.ps1
+      - run: |
+          $env:Path += ";C:\Program Files\pkgx"
+          pkgx +zlib.net
+
+  upgrades:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run:
+          curl https://dist.pkgx.dev/pkgx.sh/linux/x86-64/v1.0.0.tar.gz |
+          tar xz --strip-components=3
+      - run: mv pkgx /usr/local/bin
+      - run: test "$(pkgx --version)" = 'pkgx 1.0.0'
+      - run: PKGX_UPDATE=no ./installer.sh
+      - run: test "$(pkgx --version)" = 'pkgx 1.0.0'
+      - run: ./installer.sh
+      - run: pkgx semverator gt $(pkgx --version | awk '{print $2}') 1.0.0
+
+  pkgm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: '! pkgm --version'
+      - run: '! deno --version'
+      - run: cat ./installer.sh | sh
+      - run: pkgm --version
+      - run: pkgm i deno
+      - run: deno --version

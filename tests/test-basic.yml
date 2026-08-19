@@ -8,14 +8,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - id: action
         uses: .
-        with:
-          version: ^2
       - name: Assert pkgx is installed
         run: |
-          echo "Checking pkgx is available..."
-          if ! command -v pkgx &>/dev/null; then
-            echo "FAIL: pkgx command not found"
+          echo "Checking pkgx is on PATH..."
+          if ! command -v pkgx >/dev/null 2>&1; then
+            echo "FAIL: pkgx not found on PATH"
             exit 1
           fi
-          echo "pkgx version: $(pkgx --version)"
+          echo "pkgx found at: $(command -v pkgx)"
+          echo "pkgx version: $(pkgx --version 2>&1 || true)"
           echo "PASS"

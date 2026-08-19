@@ -1,0 +1,101 @@
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - action.js
+  workflow_call:
+  pull_request:
+    paths:
+      - action.js
+      - action.yml
+      - package.json
+      - installer.sh
+      - .github/workflows/ci.action.yml
+
+concurrency:
+  group: ${{ github.ref || 'ci' }}/action.ts
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  std:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: npm i
+      - uses: ./
+        with:
+          version: null
+      - run: pkgx --version
+
+  plus-pkgs:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-latest
+          - ubuntu-latest
+        prefix:
+          - null
+          - /tmp/pkgx
+        include:
+        - os: ubuntu-latest
+          container: debian:buster-slim
+        - os: windows-latest
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: latest
+      - run: npm i
+
+      - uses: ./
+        with:
+          PKGX_DIR: ${{ matrix.prefix }}
+          +: node@18 curl.se
+        if: ${{ runner.os != 'Windows' }}
+
+      - uses: ./
+        with:
+          PKGX_DIR: ${{ matrix.prefix }}
+          +: cmake.org^3 curl.se
+        if: ${{ runner.os == 'Windows' }}
+
+      - env:
+          MATRIX_PREFIX: ${{ matrix.prefix }}
+        run: test -f "$MATRIX_PREFIX/curl.se/v*/bin/curl"
+        if: ${{ matrix.prefix }}
+
+      - run: pkgx --version
+      - run: if [[ "$(node --version)" != v18.* ]]; then exit 1; fi
+        if: ${{ runner.os != 'Windows' }}
+      - run: curl --version
+
+  multiple-apply-is-ok:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: npm i
+      - uses: ./
+      - run: pkgx --version
+      - uses: ./
+      - run: pkgx --version
+
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: npm i
+      - uses: ./
+      - run: npm run dist
+      - run: rm /usr/local/bin/pkgx
+      - run: '! pkgx --version'
+      - run: git clean -xfd
+      - uses: ./
+      - run: pkgx --version
